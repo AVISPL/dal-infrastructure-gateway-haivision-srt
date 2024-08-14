@@ -10,24 +10,51 @@ import java.net.ConnectException;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
+import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TimeZone;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.util.CollectionUtils;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import javax.security.auth.login.FailedLoginException;
+
 import com.avispl.symphony.api.dal.control.Controller;
 import com.avispl.symphony.api.dal.dto.control.ControllableProperty;
 import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
 import com.avispl.symphony.api.dal.dto.monitor.Statistics;
+import com.avispl.symphony.api.dal.error.ResourceNotReachableException;
 import com.avispl.symphony.api.dal.monitor.Monitorable;
 import com.avispl.symphony.dal.communicator.RestCommunicator;
+import com.avispl.symphony.dal.infrastructure.gateway.haivision.srt.common.HaivisionCommand;
+import com.avispl.symphony.dal.infrastructure.gateway.haivision.srt.common.HaivisionConstant;
 import com.avispl.symphony.dal.infrastructure.gateway.haivision.srt.common.PingMode;
+import com.avispl.symphony.dal.infrastructure.gateway.haivision.srt.common.metric.DeviceInfoEnum;
+import com.avispl.symphony.dal.infrastructure.gateway.haivision.srt.common.metric.RouteConfigurationEnum;
+import com.avispl.symphony.dal.infrastructure.gateway.haivision.srt.common.metric.RouteInfoEnum;
+import com.avispl.symphony.dal.util.StringUtils;
 
 
 public class HaivisionGatewayCommunicator extends RestCommunicator implements Monitorable, Controller {
+
+	private final ObjectMapper objectMapper = new ObjectMapper();
+
+	/**
+	 * store authentication information
+	 */
+	private String authenticationCookie = HaivisionConstant.EMPTY;
 
 	/**
 	 * ReentrantLock to prevent telnet session is closed when adapter is retrieving statistics from the device.
@@ -40,23 +67,81 @@ public class HaivisionGatewayCommunicator extends RestCommunicator implements Mo
 	private ExtendedStatistics localExtendedStatistics;
 
 	/**
+	 * isEmergencyDelivery to check if control flow is trigger
+	 */
+	private boolean isEmergencyDelivery;
+
+	/**
+	 * A cache that maps route names to their corresponding values.
+	 */
+	private final Map<String, String> cacheValue = new HashMap<>();
+
+	/**
+	 * A string that specifies the name of a route to filter by.
+	 */
+	private String filterByRouteName;
+
+	/**
+	 * A string that specifies the names of all routes to filter by.
+	 */
+	private String filterAllRouteName;
+
+	/**
+	 * A set containing all route names.
+	 */
+	private Set<String> allRouteNameSet = new HashSet<>();
+
+	/**
+	 * The ID of the device.
+	 */
+	private String deviceId;
+
+	/**
+	 * Retrieves {@link #filterByRouteName}
+	 *
+	 * @return value of {@link #filterByRouteName}
+	 */
+	public String getFilterByRouteName() {
+		return filterByRouteName;
+	}
+
+	/**
+	 * Sets {@link #filterByRouteName} value
+	 *
+	 * @param filterByRouteName new value of {@link #filterByRouteName}
+	 */
+	public void setFilterByRouteName(String filterByRouteName) {
+		this.filterByRouteName = filterByRouteName;
+	}
+
+	/**
+	 * Retrieves {@link #filterAllRouteName}
+	 *
+	 * @return value of {@link #filterAllRouteName}
+	 */
+	public String getFilterAllRouteName() {
+		return filterAllRouteName;
+	}
+
+	/**
+	 * Sets {@link #filterAllRouteName} value
+	 *
+	 * @param filterAllRouteName new value of {@link #filterAllRouteName}
+	 */
+	public void setFilterAllRouteName(String filterAllRouteName) {
+		this.filterAllRouteName = filterAllRouteName;
+	}
+
+	/**
 	 * ping mode
 	 */
 	private PingMode pingMode = PingMode.ICMP;
 
 	/**
-	 * Constructs a new instance of CrestronNVXCommunicator.
+	 * Constructs a new instance of HaivisionGatewayCommunicator.
 	 */
 	public HaivisionGatewayCommunicator() throws IOException {
 		this.setTrustAllCertificates(true);
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	protected void authenticate() throws Exception {
-
 	}
 
 	/**
@@ -117,7 +202,24 @@ public class HaivisionGatewayCommunicator extends RestCommunicator implements Mo
 	@Override
 	public List<Statistics> getMultipleStatistics() throws Exception {
 		reentrantLock.lock();
-		reentrantLock.unlock();
+
+		try {
+			Map<String, String> stats = new HashMap<>();
+			ExtendedStatistics extendedStatistics = new ExtendedStatistics();
+
+			if (!isEmergencyDelivery) {
+				checkAuthentication();
+				retrieveMonitoringProperties();
+				retrieveRouteInfo();
+				populateMonitoringProperties(stats);
+				populateRouteInfo(stats);
+				extendedStatistics.setStatistics(stats);
+				localExtendedStatistics = extendedStatistics;
+			}
+			isEmergencyDelivery = false;
+		} finally {
+			reentrantLock.unlock();
+		}
 		return Collections.singletonList(localExtendedStatistics);
 	}
 
@@ -150,6 +252,14 @@ public class HaivisionGatewayCommunicator extends RestCommunicator implements Mo
 	 * {@inheritDoc}
 	 */
 	@Override
+	protected void authenticate() throws Exception {
+
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
 	protected void internalInit() throws Exception {
 		if (logger.isDebugEnabled()) {
 			logger.debug("Internal init is called.");
@@ -163,15 +273,282 @@ public class HaivisionGatewayCommunicator extends RestCommunicator implements Mo
 	 */
 	@Override
 	protected void internalDestroy() {
+		if (StringUtils.isNotNullOrEmpty(this.authenticationCookie)) {
+			deleteCookieSession();
+		}
 		if (logger.isDebugEnabled()) {
 			logger.debug("Internal destroy is called.");
 		}
 		localExtendedStatistics = null;
+		cacheValue.clear();
 		super.internalDestroy();
 	}
 
 	@Override
 	protected HttpHeaders putExtraRequestHeaders(HttpMethod httpMethod, String uri, HttpHeaders headers) throws Exception {
+		headers.set("Content-Type", "application/json");
+		if (StringUtils.isNotNullOrEmpty(this.authenticationCookie)) {
+			headers.set(HaivisionConstant.COOKIE, "sessionID=" + this.authenticationCookie);
+		}
 		return super.putExtraRequestHeaders(httpMethod, uri, headers);
+	}
+
+	private void checkAuthentication() throws Exception {
+		if (StringUtils.isNullOrEmpty(authenticationCookie)) {
+			initialCookieSession();
+		} else {
+			checkValidCookieSession();
+		}
+	}
+
+	private void initialCookieSession() throws FailedLoginException {
+		try {
+			Map<String, String> bodyRequest = new HashMap<>();
+			bodyRequest.put("username", this.getLogin());
+			bodyRequest.put("password", this.getPassword());
+			JsonNode response = this.doPost(HaivisionCommand.API_SESSION, bodyRequest, JsonNode.class);
+			if (response != null && response.has(HaivisionConstant.RESPONSE) && response.get(HaivisionConstant.RESPONSE).has(HaivisionConstant.SESSION_ID)) {
+				this.authenticationCookie = response.get(HaivisionConstant.RESPONSE).get(HaivisionConstant.SESSION_ID).asText();
+				return;
+			}
+			this.authenticationCookie = HaivisionConstant.EMPTY;
+			throw new ResourceNotReachableException("Unable to retrieve the authorization token, endpoint not reachable.");
+		} catch (FailedLoginException ex) {
+			throw new FailedLoginException("Unable to login. Please check device credentials");
+		} catch (Exception e) {
+			throw new ResourceNotReachableException("Unable to retrieve the authorization token, endpoint not reachable");
+		}
+	}
+
+	private void checkValidCookieSession() throws Exception {
+		try {
+			JsonNode response = this.doGet(HaivisionCommand.API_SESSION, JsonNode.class);
+			if (response == null || response.has(HaivisionConstant.ERROR)) {
+				initialCookieSession();
+			}
+		} catch (Exception e) {
+			logger.info("Invalid session ID " + this.authenticationCookie);
+			initialCookieSession();
+		}
+	}
+
+	private void deleteCookieSession() {
+		try {
+			this.doDelete(HaivisionCommand.API_SESSION);
+			logger.info("Delete session ID " + this.authenticationCookie);
+		} catch (Exception e) {
+			logger.info("Error white delete session ID " + this.authenticationCookie);
+		} finally {
+			this.authenticationCookie = HaivisionConstant.EMPTY;
+		}
+	}
+
+	private void retrieveMonitoringProperties() {
+		try {
+			JsonNode response = this.doGet(HaivisionCommand.GET_DEVICE_INFO, JsonNode.class);
+			if (response != null && response.isArray()) {
+				JsonNode deviceInfo = response.get(0);
+				deviceId = deviceInfo.get("_id").asText();
+				for (DeviceInfoEnum item : DeviceInfoEnum.values()) {
+					if (deviceInfo.has(item.getField())) {
+						cacheValue.put(item.getName(), deviceInfo.get(item.getField()).asText());
+					}
+				}
+			}
+		} catch (Exception e) {
+			throw new ResourceNotReachableException("Error when retrieving device info", e);
+		}
+	}
+
+	private void populateMonitoringProperties(Map<String, String> stats) {
+		for (DeviceInfoEnum item : DeviceInfoEnum.values()) {
+			String name = item.getName();
+			String value = getDefaultValueForNullData(cacheValue.get(name));
+			switch (item) {
+				case LAST_CONNECTED:
+					stats.put(name, formatMillisecondsToDate(value));
+					break;
+				case SERIAL_NUMBER:
+					stats.put(name, value.replace(HaivisionConstant.SPACE, HaivisionConstant.EMPTY));
+					break;
+				default:
+					stats.put(name, value);
+			}
+		}
+	}
+
+	private void retrieveRouteInfo() {
+		try {
+			JsonNode response = this.doGet(String.format(HaivisionCommand.GET_ALL_ROUTE, deviceId), JsonNode.class);
+			if (response != null && response.has(HaivisionConstant.DATA) && response.get(HaivisionConstant.DATA).isArray()) {
+				allRouteNameSet.clear();
+				for (JsonNode item : response.get(HaivisionConstant.DATA)) {
+					String group = item.get(HaivisionConstant.NAME).asText();
+					allRouteNameSet.add(group);
+					for (RouteInfoEnum routeInfo : RouteInfoEnum.values()) {
+						if (item.has(routeInfo.getField())) {
+							if (routeInfo.equals(RouteInfoEnum.SOURCE) || routeInfo.equals(RouteInfoEnum.DESTINATION)) {
+								cacheValue.put(group + HaivisionConstant.HASH + routeInfo.getName(), getDefaultValueForNullData(item.get(routeInfo.getField()).toString()));
+
+							} else {
+								cacheValue.put(group + HaivisionConstant.HASH + routeInfo.getName(), getDefaultValueForNullData(item.get(routeInfo.getField()).asText()));
+							}
+						}
+					}
+				}
+			}
+		} catch (Exception e) {
+			throw new ResourceNotReachableException("Error when retrieving route info", e);
+		}
+	}
+
+	private void populateRouteInfo(Map<String, String> stats) {
+		if (StringUtils.isNullOrEmpty(filterAllRouteName) || HaivisionConstant.FALSE.equalsIgnoreCase(filterAllRouteName)) {
+			if (StringUtils.isNullOrEmpty(filterByRouteName)) {
+				return;
+			} else {
+				allRouteNameSet = convertStringToSet(filterByRouteName);
+			}
+		}
+		for (String name : allRouteNameSet) {
+			for (RouteInfoEnum item : RouteInfoEnum.values()) {
+				String nameProperty = name + HaivisionConstant.HASH + item.getName();
+				String value = getDefaultValueForNullData(cacheValue.get(nameProperty));
+				switch (item) {
+					case SOURCE:
+						populateSourceInfo(stats, value, name);
+						break;
+					case DESTINATION:
+						populateDestinationInfo(stats, value, name);
+						break;
+					case UPTIME:
+						stats.put(nameProperty, convertTimeFormat(value));
+						break;
+					default:
+						stats.put(nameProperty, value);
+						break;
+				}
+			}
+		}
+	}
+
+	private void populateSourceInfo(Map<String, String> stats, String jsonString, String name) {
+		if (jsonString.equalsIgnoreCase(HaivisionConstant.NONE)) {
+			return;
+		}
+		try {
+			JsonNode node = objectMapper.readTree(jsonString);
+			for (RouteConfigurationEnum item : RouteConfigurationEnum.values()) {
+				if (!node.has(item.getField())) {
+					continue;
+				}
+				String value = getDefaultValueForNullData(node.get(item.getField()).asText());
+				switch (item) {
+					case ADDRESS:
+						String port = node.get("port").asText();
+						stats.put(name + HaivisionConstant.HASH + HaivisionConstant.SOURCE + item.getName(), value + HaivisionConstant.COLON + port);
+						break;
+					default:
+						stats.put(name + HaivisionConstant.HASH + HaivisionConstant.SOURCE + item.getName(), value);
+						break;
+				}
+			}
+		} catch (Exception e) {
+			logger.error("Error while populate the Source Info", e);
+		}
+	}
+
+	private void populateDestinationInfo(Map<String, String> stats, String jsonString, String name) {
+		if (jsonString.equalsIgnoreCase(HaivisionConstant.NONE)) {
+			return;
+		}
+		try {
+			JsonNode node = objectMapper.readTree(jsonString);
+			if (!node.isArray()) {
+				return;
+			}
+			int index = 1;
+			for (JsonNode destination : node) {
+				String destinationIndex = node.size() == 1 ? "" : String.valueOf(index);
+				for (RouteConfigurationEnum item : RouteConfigurationEnum.values()) {
+					if (!destination.has(item.getField())) {
+						continue;
+					}
+					String value = getDefaultValueForNullData(destination.get(item.getField()).asText());
+					switch (item) {
+						case ADDRESS:
+							String port = destination.get("port").asText();
+							stats.put(name + HaivisionConstant.HASH + HaivisionConstant.DESTINATION + destinationIndex + item.getName(), value + HaivisionConstant.COLON + port);
+							break;
+						default:
+							stats.put(name + HaivisionConstant.HASH + HaivisionConstant.DESTINATION + destinationIndex + item.getName(), value);
+							break;
+					}
+				}
+				index++;
+			}
+		} catch (Exception e) {
+			logger.error("Error while populate the Source Info", e);
+		}
+	}
+
+	private Set<String> convertStringToSet(String input) {
+		return Arrays.stream(input.split(","))
+				.map(String::trim)
+				.collect(Collectors.toSet());
+	}
+
+	private String formatMillisecondsToDate(String inputValue) {
+		if (inputValue.equals(HaivisionConstant.NONE)) {
+			return inputValue;
+		}
+		try {
+			long milliseconds = Long.parseLong(inputValue);
+			Date date = new Date(milliseconds);
+			SimpleDateFormat dateFormat = new SimpleDateFormat("MMM d, yyyy, h:mm a");
+			dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
+			return dateFormat.format(date);
+		} catch (Exception e) {
+			logger.error("Error when convert date data");
+			return HaivisionConstant.NONE;
+		}
+	}
+
+	private String convertTimeFormat(String timeStr) {
+		if (timeStr.equals(HaivisionConstant.NONE)) {
+			return timeStr;
+		}
+		String[] parts = timeStr.split(HaivisionConstant.COLON);
+		if (parts.length < 2) {
+			return HaivisionConstant.NONE;
+		}
+		int hours = Integer.parseInt(parts[0]);
+		int minutes = Integer.parseInt(parts[1]);
+
+		int days = hours / 24;
+		hours = hours / 60;
+
+		return String.format("%d day(s) %d hour(s) %d minute(s)", days, hours, minutes);
+	}
+
+	/**
+	 * check value is null or empty
+	 *
+	 * @param value input value
+	 * @return value after checking
+	 */
+	private String getDefaultValueForNullData(String value) {
+		return StringUtils.isNotNullOrEmpty(value) && !"null".equalsIgnoreCase(value) ? uppercaseFirstCharacter(value) : HaivisionConstant.NONE;
+	}
+
+	/**
+	 * capitalize the first character of the string
+	 *
+	 * @param input input string
+	 * @return string after fix
+	 */
+	private String uppercaseFirstCharacter(String input) {
+		char firstChar = input.charAt(0);
+		return Character.toUpperCase(firstChar) + input.substring(1);
 	}
 }
