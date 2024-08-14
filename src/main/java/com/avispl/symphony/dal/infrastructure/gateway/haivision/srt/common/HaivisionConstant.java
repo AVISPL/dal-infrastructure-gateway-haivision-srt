@@ -4,7 +4,13 @@
 
 package com.avispl.symphony.dal.infrastructure.gateway.haivision.srt.common;
 
-
+/**
+ * Enum representing various the constant.
+ *
+ * @author Harry / Symphony Dev Team<br>
+ * Created on 8/1/2024
+ * @since 1.0.0
+ */
 public class HaivisionConstant {
 	public static final String NONE = "None";
 	public static final String EMPTY = "";

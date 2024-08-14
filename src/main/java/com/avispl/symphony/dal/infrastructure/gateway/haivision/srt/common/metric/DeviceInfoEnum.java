@@ -4,12 +4,19 @@
 
 package com.avispl.symphony.dal.infrastructure.gateway.haivision.srt.common.metric;
 
+/**
+ * Enum representing various device information metrics.
+ *
+ * @author Harry / Symphony Dev Team<br>
+ * Created on 8/12/2024
+ * @since 1.0.0
+ */
 public enum DeviceInfoEnum {
 	DEVICE_ID("DeviceID", "_id"),
 	TYPE("Type", "type"),
 	IP_ADDRESS("IPAddress", "ip"),
 	DEVICE_NAME("DeviceName", "name"),
-	LAST_CONNECTED("LastConnected", "lastConnectedAt"),
+	LAST_CONNECTED("LastConnectedAt(GMT)", "lastConnectedAt"),
 	STATUS_CODE("StatusCode", "statusCode"),
 	STATUS("Status", "status"),
 	STATUS_DETAILS("StatusDetails", "statusDetails"),

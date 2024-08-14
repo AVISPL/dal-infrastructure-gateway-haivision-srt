@@ -10,6 +10,13 @@ import java.util.Objects;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+/**
+ * Ping mode - ICMP vs TCP
+ *
+ * @author Harry / Symphony Dev Team<br>
+ * Created on 3/19/2024
+ * @since 1.0.0
+ */
 public enum PingMode {
 	ICMP("ICMP"), TCP("TCP");
 	private static final Log logger = LogFactory.getLog(PingMode.class);

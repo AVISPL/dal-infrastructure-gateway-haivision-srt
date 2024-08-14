@@ -5,7 +5,7 @@
 package com.avispl.symphony.dal.infrastructure.gateway.haivision.srt.common;
 
 /**
- * HaivisionCommand
+ * Enum representing various the command.
  *
  * @author Harry / Symphony Dev Team<br>
  * Created on 8/1/2024

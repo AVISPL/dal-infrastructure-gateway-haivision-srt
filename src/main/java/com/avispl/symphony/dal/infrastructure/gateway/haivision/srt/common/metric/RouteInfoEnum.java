@@ -5,7 +5,7 @@
 package com.avispl.symphony.dal.infrastructure.gateway.haivision.srt.common.metric;
 
 /**
- * RouteInfoMetric
+ * Enum representing various route info metrics.
  *
  * @author Harry / Symphony Dev Team<br>
  * Created on 8/12/2024

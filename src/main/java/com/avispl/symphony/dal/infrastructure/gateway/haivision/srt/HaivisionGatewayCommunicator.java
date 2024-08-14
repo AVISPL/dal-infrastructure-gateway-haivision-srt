@@ -284,6 +284,9 @@ public class HaivisionGatewayCommunicator extends RestCommunicator implements Mo
 		super.internalDestroy();
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	protected HttpHeaders putExtraRequestHeaders(HttpMethod httpMethod, String uri, HttpHeaders headers) throws Exception {
 		headers.set("Content-Type", "application/json");
@@ -293,6 +296,14 @@ public class HaivisionGatewayCommunicator extends RestCommunicator implements Mo
 		return super.putExtraRequestHeaders(httpMethod, uri, headers);
 	}
 
+	/**
+	 * Checks and ensures that the authentication cookie is valid.
+	 *
+	 * If the authentication cookie is missing or invalid, this method will
+	 * initiate a new cookie session.
+	 *
+	 * @throws Exception if an error occurs during the authentication check or session initialization.
+	 */
 	private void checkAuthentication() throws Exception {
 		if (StringUtils.isNullOrEmpty(authenticationCookie)) {
 			initialCookieSession();
@@ -301,6 +312,15 @@ public class HaivisionGatewayCommunicator extends RestCommunicator implements Mo
 		}
 	}
 
+	/**
+	 * Initializes a new cookie session by authenticating with the server.
+	 *
+	 * This method sends the username and password to the server to obtain a new
+	 * session ID. If the authentication fails, a {@link FailedLoginException} is thrown.
+	 *
+	 * @throws FailedLoginException if the login credentials are incorrect or the server rejects the login.
+	 * @throws ResourceNotReachableException if the server is not reachable or the authorization token cannot be retrieved.
+	 */
 	private void initialCookieSession() throws FailedLoginException {
 		try {
 			Map<String, String> bodyRequest = new HashMap<>();
@@ -320,6 +340,14 @@ public class HaivisionGatewayCommunicator extends RestCommunicator implements Mo
 		}
 	}
 
+	/**
+	 * Verifies if the current authentication cookie session is still valid.
+	 *
+	 * This method sends a request to the server to validate the current session.
+	 * If the session is invalid or an error occurs, a new session is initialized.
+	 *
+	 * @throws Exception if an error occurs during the validation of the cookie session.
+	 */
 	private void checkValidCookieSession() throws Exception {
 		try {
 			JsonNode response = this.doGet(HaivisionCommand.API_SESSION, JsonNode.class);
@@ -332,6 +360,12 @@ public class HaivisionGatewayCommunicator extends RestCommunicator implements Mo
 		}
 	}
 
+	/**
+	 * Deletes the current authentication cookie session from the server.
+	 *
+	 * This method sends a request to the server to delete the current session ID.
+	 * After deleting the session, the local authentication cookie is reset to an empty value.
+	 */
 	private void deleteCookieSession() {
 		try {
 			this.doDelete(HaivisionCommand.API_SESSION);
@@ -343,6 +377,11 @@ public class HaivisionGatewayCommunicator extends RestCommunicator implements Mo
 		}
 	}
 
+	/**
+	 * Retrieves monitoring properties for a device and populates the cache with the device's information.
+	 *
+	 * @throws ResourceNotReachableException if an error occurs when retrieving the device information.
+	 */
 	private void retrieveMonitoringProperties() {
 		try {
 			JsonNode response = this.doGet(HaivisionCommand.GET_DEVICE_INFO, JsonNode.class);
@@ -360,6 +399,11 @@ public class HaivisionGatewayCommunicator extends RestCommunicator implements Mo
 		}
 	}
 
+	/**
+	 * Populates the provided statistics map with monitoring properties from the cache.
+	 *
+	 * @param stats a map to be populated with the device monitoring properties.
+	 */
 	private void populateMonitoringProperties(Map<String, String> stats) {
 		for (DeviceInfoEnum item : DeviceInfoEnum.values()) {
 			String name = item.getName();
@@ -377,6 +421,11 @@ public class HaivisionGatewayCommunicator extends RestCommunicator implements Mo
 		}
 	}
 
+	/**
+	 * Retrieves routing information for the device and populates the cache with route details.
+	 *
+	 * @throws ResourceNotReachableException if an error occurs when retrieving route information.
+	 */
 	private void retrieveRouteInfo() {
 		try {
 			JsonNode response = this.doGet(String.format(HaivisionCommand.GET_ALL_ROUTE, deviceId), JsonNode.class);
@@ -402,6 +451,11 @@ public class HaivisionGatewayCommunicator extends RestCommunicator implements Mo
 		}
 	}
 
+	/**
+	 * Populates the provided statistics map with route information from the cache.
+	 *
+	 * @param stats a map to be populated with the route information.
+	 */
 	private void populateRouteInfo(Map<String, String> stats) {
 		if (StringUtils.isNullOrEmpty(filterAllRouteName) || HaivisionConstant.FALSE.equalsIgnoreCase(filterAllRouteName)) {
 			if (StringUtils.isNullOrEmpty(filterByRouteName)) {
@@ -432,6 +486,13 @@ public class HaivisionGatewayCommunicator extends RestCommunicator implements Mo
 		}
 	}
 
+	/**
+	 * Populates the provided statistics map with source information from the given JSON string.
+	 *
+	 * @param stats a map to be populated with the source information.
+	 * @param jsonString a JSON string containing the source information.
+	 * @param name the name of the route for which the source information is being populated.
+	 */
 	private void populateSourceInfo(Map<String, String> stats, String jsonString, String name) {
 		if (jsonString.equalsIgnoreCase(HaivisionConstant.NONE)) {
 			return;
@@ -458,6 +519,13 @@ public class HaivisionGatewayCommunicator extends RestCommunicator implements Mo
 		}
 	}
 
+	/**
+	 * Populates the provided statistics map with destination information from the given JSON string.
+	 *
+	 * @param stats a map to be populated with the destination information.
+	 * @param jsonString a JSON string containing the destination information.
+	 * @param name the name of the route for which the destination information is being populated.
+	 */
 	private void populateDestinationInfo(Map<String, String> stats, String jsonString, String name) {
 		if (jsonString.equalsIgnoreCase(HaivisionConstant.NONE)) {
 			return;
@@ -469,7 +537,7 @@ public class HaivisionGatewayCommunicator extends RestCommunicator implements Mo
 			}
 			int index = 1;
 			for (JsonNode destination : node) {
-				String destinationIndex = node.size() == 1 ? "" : String.valueOf(index);
+				String destinationIndex = node.size() == 1 ? HaivisionConstant.EMPTY : String.valueOf(index);
 				for (RouteConfigurationEnum item : RouteConfigurationEnum.values()) {
 					if (!destination.has(item.getField())) {
 						continue;
@@ -492,12 +560,24 @@ public class HaivisionGatewayCommunicator extends RestCommunicator implements Mo
 		}
 	}
 
+	/**
+	 * Converts a comma-separated string into a set of trimmed strings.
+	 *
+	 * @param input the comma-separated string to convert.
+	 * @return a set containing the trimmed strings.
+	 */
 	private Set<String> convertStringToSet(String input) {
 		return Arrays.stream(input.split(","))
 				.map(String::trim)
 				.collect(Collectors.toSet());
 	}
 
+	/**
+	 * Formats a string representing milliseconds into a date string in the format "MMM d, yyyy, h:mm a GMT".
+	 *
+	 * @param inputValue the string representing milliseconds.
+	 * @return the formatted date string, or a default value if the input is "NONE" or invalid.
+	 */
 	private String formatMillisecondsToDate(String inputValue) {
 		if (inputValue.equals(HaivisionConstant.NONE)) {
 			return inputValue;
@@ -514,6 +594,12 @@ public class HaivisionGatewayCommunicator extends RestCommunicator implements Mo
 		}
 	}
 
+	/**
+	 * Converts a time string in the format "hours:minutes:seconds" into a formatted string representing days, hours, and minutes.
+	 *
+	 * @param timeStr the time string to convert.
+	 * @return the formatted time string, or a default value if the input is "NONE" or invalid.
+	 */
 	private String convertTimeFormat(String timeStr) {
 		if (timeStr.equals(HaivisionConstant.NONE)) {
 			return timeStr;
