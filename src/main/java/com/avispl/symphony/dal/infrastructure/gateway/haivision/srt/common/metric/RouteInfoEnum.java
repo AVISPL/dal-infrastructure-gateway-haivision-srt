@@ -14,7 +14,7 @@ package com.avispl.symphony.dal.infrastructure.gateway.haivision.srt.common.metr
 public enum RouteInfoEnum {
 	UPTIME("RouteUptime", "elapsedTime"),
 	ID("RouteID", "id"),
-	STATUS("RouteStatus", "state"),
+	STATUS("RouteStatus", "summaryStatusDetails"),
 	SOURCE("Source", "source"),
 	DESTINATION("Destinations", "destinations"),
 			;
