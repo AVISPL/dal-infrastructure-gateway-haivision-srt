@@ -37,6 +37,10 @@ public class HaivisionGatewayCommunicatorTest {
 		haivisionGatewayCommunicator.destroy();
 	}
 
+	/**
+	 * Test device info
+	 *
+	 */
 	@Test
 	void testGetDeviceInfo() throws Exception {
 		haivisionGatewayCommunicator.setFilterAllRouteName("");
