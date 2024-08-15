@@ -46,7 +46,32 @@ import com.avispl.symphony.dal.infrastructure.gateway.haivision.srt.common.metri
 import com.avispl.symphony.dal.infrastructure.gateway.haivision.srt.common.metric.RouteInfoEnum;
 import com.avispl.symphony.dal.util.StringUtils;
 
-
+/**
+ * HaivisionGatewayCommunicator Adapter
+ *
+ * Supported features are:
+ * Monitoring for Device Information and Route information
+ *
+ * Monitoring Capabilities:
+ * Haivision Media Gateway version 1.0.0
+ *
+ * DeviceID
+ * DeviceName
+ * FirmwareVersion
+ * IPAddress
+ * LastConnected
+ * LastConnection
+ * PendingSync
+ * SerialNumber
+ * Status
+ * StatusCode
+ * StatusDetails
+ * Type
+ *
+ * @author Harry / Symphony Dev Team<br>
+ * Created on 8/15/2024
+ * @since 1.0.0
+ */
 public class HaivisionGatewayCommunicator extends RestCommunicator implements Monitorable, Controller {
 
 	private final ObjectMapper objectMapper = new ObjectMapper();
