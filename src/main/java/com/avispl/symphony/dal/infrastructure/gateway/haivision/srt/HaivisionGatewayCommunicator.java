@@ -163,6 +163,24 @@ public class HaivisionGatewayCommunicator extends RestCommunicator implements Mo
 	private PingMode pingMode = PingMode.ICMP;
 
 	/**
+	 * Retrieves {@link #pingMode}
+	 *
+	 * @return value of {@link #pingMode}
+	 */
+	public PingMode getPingMode() {
+		return pingMode;
+	}
+
+	/**
+	 * Sets {@link #pingMode} value
+	 *
+	 * @param pingMode new value of {@link #pingMode}
+	 */
+	public void setPingMode(PingMode pingMode) {
+		this.pingMode = pingMode;
+	}
+
+	/**
 	 * Constructs a new instance of HaivisionGatewayCommunicator.
 	 */
 	public HaivisionGatewayCommunicator() throws IOException {

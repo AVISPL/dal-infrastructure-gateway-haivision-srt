@@ -17,6 +17,7 @@ public enum RouteInfoEnum {
 	STATUS("RouteStatus", "summaryStatusDetails"),
 	SOURCE("Source", "source"),
 	DESTINATION("Destinations", "destinations"),
+	NAME("RouteName", "name")
 			;
 	private final String name;
 	private final String field;

@@ -5,6 +5,7 @@
 package com.avispl.symphony.dal.infrastructure.gateway.haivision.srt;
 
 
+import java.util.List;
 import java.util.Map;
 
 import org.junit.Assert;
@@ -12,6 +13,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.avispl.symphony.api.dal.dto.control.AdvancedControllableProperty;
 import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
 
 public class HaivisionGatewayCommunicatorTest {
@@ -61,5 +63,51 @@ public class HaivisionGatewayCommunicatorTest {
 		Assert.assertEquals("Ok", statistics.get("StatusCode"));
 		Assert.assertEquals("Connection has been established in the last 1 minutes.", statistics.get("StatusDetails"));
 		Assert.assertEquals("Gateway", statistics.get("Type"));
+	}
+
+	@Test
+	void testDeviceInfoWithFilteringAllRouteName() throws Exception{
+		haivisionGatewayCommunicator.setFilterAllRouteName("true");
+		extendedStatistic = (ExtendedStatistics) haivisionGatewayCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> statistics = extendedStatistic.getStatistics();
+		Assert.assertEquals(661, statistics.size());
+	}
+
+	@Test
+	void testDeviceInfoWithoutFilteringAllRouteName() throws Exception{
+		haivisionGatewayCommunicator.setFilterAllRouteName("false");
+		extendedStatistic = (ExtendedStatistics) haivisionGatewayCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> statistics = extendedStatistic.getStatistics();
+		Assert.assertEquals(13, statistics.size());
+	}
+
+	/**
+	 * Tests the retrieval of aggregated data with a specific device type filter applied, verifying the statistics accordingly.
+	 *
+	 * @throws Exception if there's an error during the test process.
+	 */
+	@Test
+	void testDeviceInfoWithFiltering() throws Exception {
+		haivisionGatewayCommunicator.setFilterByRouteName("0-Mariners4");
+		extendedStatistic = (ExtendedStatistics) haivisionGatewayCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> statistics = extendedStatistic.getStatistics();
+		Assert.assertEquals(22, statistics.size());
+		Assert.assertEquals("0-Mariners4", statistics.get("0-Mariners4#RouteName"));
+		Assert.assertEquals("Ok", statistics.get("StatusCode"));
+		Assert.assertEquals("Idle", statistics.get("0-Mariners4#RouteStatus"));
+	}
+
+	/**
+	 * Tests the retrieval of aggregated data with multiple device type filters applied, verifying the resulting statistics.
+	 *
+	 * @throws Exception if there's an error during the test process.
+	 */
+	@Test
+	void testAggregatorWithMultipleFilteringValue() throws Exception {
+		haivisionGatewayCommunicator.setFilterByRouteName("0-Mariners4, 000-Avid-Loopback");
+		extendedStatistic = (ExtendedStatistics) haivisionGatewayCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> statistics = extendedStatistic.getStatistics();
+		List<AdvancedControllableProperty> advancedControllablePropertyList = extendedStatistic.getControllableProperties();
+		Assert.assertEquals(41, statistics.size());
 	}
 }
