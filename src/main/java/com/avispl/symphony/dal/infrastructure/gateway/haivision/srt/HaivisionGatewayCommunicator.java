@@ -11,15 +11,7 @@ import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.text.SimpleDateFormat;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TimeZone;
+import java.util.*;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
@@ -349,7 +341,7 @@ public class HaivisionGatewayCommunicator extends RestCommunicator implements Mo
 	 */
 	private void checkAuthentication() throws Exception {
 		if (StringUtils.isNullOrEmpty(authenticationCookie)) {
-			initialCookieSession();
+			initializeCookieSession();
 		} else {
 			checkValidCookieSession();
 		}
@@ -364,7 +356,7 @@ public class HaivisionGatewayCommunicator extends RestCommunicator implements Mo
 	 * @throws FailedLoginException if the login credentials are incorrect or the server rejects the login.
 	 * @throws ResourceNotReachableException if the server is not reachable or the authorization token cannot be retrieved.
 	 */
-	private void initialCookieSession() throws FailedLoginException {
+	private void initializeCookieSession() throws FailedLoginException {
 		try {
 			Map<String, String> bodyRequest = new HashMap<>();
 			bodyRequest.put("username", this.getLogin());
@@ -379,7 +371,7 @@ public class HaivisionGatewayCommunicator extends RestCommunicator implements Mo
 		} catch (FailedLoginException ex) {
 			throw new FailedLoginException("Unable to login. Please check device credentials");
 		} catch (Exception e) {
-			throw new ResourceNotReachableException("Unable to retrieve the authorization token, endpoint not reachable");
+			throw new ResourceNotReachableException("Unable to retrieve the authorization token, endpoint not reachable", e);
 		}
 	}
 
@@ -395,11 +387,11 @@ public class HaivisionGatewayCommunicator extends RestCommunicator implements Mo
 		try {
 			JsonNode response = this.doGet(HaivisionCommand.API_SESSION, JsonNode.class);
 			if (response == null || response.has(HaivisionConstant.ERROR)) {
-				initialCookieSession();
+				initializeCookieSession();
 			}
 		} catch (Exception e) {
 			logger.info("Invalid session ID " + this.authenticationCookie);
-			initialCookieSession();
+			initializeCookieSession();
 		}
 	}
 
@@ -430,7 +422,7 @@ public class HaivisionGatewayCommunicator extends RestCommunicator implements Mo
 			JsonNode response = this.doGet(HaivisionCommand.GET_DEVICE_INFO, JsonNode.class);
 			if (response != null && response.isArray()) {
 				JsonNode deviceInfo = response.get(0);
-				deviceId = deviceInfo.get("_id").asText();
+				deviceId = deviceInfo.at("/_id").asText();
 				for (DeviceInfoEnum item : DeviceInfoEnum.values()) {
 					if (deviceInfo.has(item.getField())) {
 						cacheValue.put(item.getName(), deviceInfo.get(item.getField()).asText());
@@ -500,7 +492,8 @@ public class HaivisionGatewayCommunicator extends RestCommunicator implements Mo
 	 * @param stats a map to be populated with the route information.
 	 */
 	private void populateRouteInfo(Map<String, String> stats) {
-		if (StringUtils.isNullOrEmpty(filterAllRouteName) || HaivisionConstant.FALSE.equalsIgnoreCase(filterAllRouteName)) {
+		if (StringUtils.isNullOrEmpty(filterAllRouteName) || HaivisionConstant.FALSE.equalsIgnoreCase(filterAllRouteName)
+			|| !HaivisionConstant.TRUE.equalsIgnoreCase(filterAllRouteName)) {
 			if (StringUtils.isNullOrEmpty(filterByRouteName)) {
 				return;
 			} else {
@@ -552,7 +545,14 @@ public class HaivisionGatewayCommunicator extends RestCommunicator implements Mo
 						String port = node.get("port").asText();
 						stats.put(name + HaivisionConstant.HASH + HaivisionConstant.SOURCE + item.getName(), value + HaivisionConstant.COLON + port);
 						break;
-					default:
+					case PROTOCOL:
+						stats.put(name + HaivisionConstant.HASH + HaivisionConstant.SOURCE + item.getName(), value.toUpperCase());
+						break;
+					case TYPE:
+                    case STATUS:
+                        stats.put(name + HaivisionConstant.HASH + HaivisionConstant.SOURCE + item.getName(), uppercaseFirstCharacter(value));
+						break;
+                    default:
 						stats.put(name + HaivisionConstant.HASH + HaivisionConstant.SOURCE + item.getName(), value);
 						break;
 				}
@@ -591,6 +591,13 @@ public class HaivisionGatewayCommunicator extends RestCommunicator implements Mo
 							String port = destination.get("port").asText();
 							stats.put(name + HaivisionConstant.HASH + HaivisionConstant.DESTINATION + destinationIndex + item.getName(), value + HaivisionConstant.COLON + port);
 							break;
+						case PROTOCOL:
+							stats.put(name + HaivisionConstant.HASH + HaivisionConstant.DESTINATION + destinationIndex + item.getName(), value.toUpperCase());
+							break;
+						case TYPE:
+						case STATUS:
+							stats.put(name + HaivisionConstant.HASH + HaivisionConstant.DESTINATION + destinationIndex + item.getName(), uppercaseFirstCharacter(value));
+							break;
 						default:
 							stats.put(name + HaivisionConstant.HASH + HaivisionConstant.DESTINATION + destinationIndex + item.getName(), value);
 							break;
@@ -612,7 +619,25 @@ public class HaivisionGatewayCommunicator extends RestCommunicator implements Mo
 	private Set<String> convertStringToSet(String input) {
 		return Arrays.stream(input.split(","))
 				.map(String::trim)
+				.flatMap(value -> getAllApproximateMatches(value).stream())
+				.filter(Objects::nonNull)
 				.collect(Collectors.toSet());
+	}
+
+	/**
+	 * Gets all names from allRouteNameSet that approximately match the input string.
+	 *
+	 * @param value the input string to check.
+	 * @return a set of all names that match, or an empty set if no matches are found.
+	 */
+	private Set<String> getAllApproximateMatches(String value) {
+		Set<String> matches = new HashSet<>();
+		for (String routeName : allRouteNameSet) {
+			if (routeName.equalsIgnoreCase(value) || routeName.toLowerCase().contains(value.toLowerCase())) {
+				matches.add(routeName);
+			}
+		}
+		return matches;
 	}
 
 	/**
@@ -644,8 +669,8 @@ public class HaivisionGatewayCommunicator extends RestCommunicator implements Mo
 	 * @return the formatted time string, or a default value if the input is "NONE" or invalid.
 	 */
 	private String convertTimeFormat(String timeStr) {
-		if (timeStr.equals(HaivisionConstant.NONE)) {
-			return timeStr;
+		if (HaivisionConstant.NONE.equals(timeStr) || "00:00:00".equals(timeStr)) {
+			return timeStr.equals("00:00:00") ? "No Activity" : HaivisionConstant.NONE;
 		}
 		String[] parts = timeStr.split(HaivisionConstant.COLON);
 		if (parts.length < 2) {
@@ -653,11 +678,9 @@ public class HaivisionGatewayCommunicator extends RestCommunicator implements Mo
 		}
 		int hours = Integer.parseInt(parts[0]);
 		int minutes = Integer.parseInt(parts[1]);
+		int seconds = Integer.parseInt(parts[2]);
 
-		int days = hours / 24;
-		hours = hours / 60;
-
-		return String.format("%d day(s) %d hour(s) %d minute(s)", days, hours, minutes);
+		return String.format("%d hour(s) %d minute(s) %d second(s)", hours, minutes, seconds);
 	}
 
 	/**
@@ -667,7 +690,7 @@ public class HaivisionGatewayCommunicator extends RestCommunicator implements Mo
 	 * @return value after checking
 	 */
 	private String getDefaultValueForNullData(String value) {
-		return StringUtils.isNotNullOrEmpty(value) && !"null".equalsIgnoreCase(value) ? uppercaseFirstCharacter(value) : HaivisionConstant.NONE;
+		return StringUtils.isNotNullOrEmpty(value) && !"null".equalsIgnoreCase(value) ? value : HaivisionConstant.NONE;
 	}
 
 	/**

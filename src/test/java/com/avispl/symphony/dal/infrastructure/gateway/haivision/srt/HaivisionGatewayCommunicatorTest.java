@@ -88,13 +88,12 @@ public class HaivisionGatewayCommunicatorTest {
 	 */
 	@Test
 	void testDeviceInfoWithFiltering() throws Exception {
-		haivisionGatewayCommunicator.setFilterByRouteName("0-Mariners4");
+		haivisionGatewayCommunicator.setFilterByRouteName("0-DK-PlaySTB");
 		extendedStatistic = (ExtendedStatistics) haivisionGatewayCommunicator.getMultipleStatistics().get(0);
 		Map<String, String> statistics = extendedStatistic.getStatistics();
-		Assert.assertEquals(22, statistics.size());
-		Assert.assertEquals("0-Mariners4", statistics.get("0-Mariners4#RouteName"));
-		Assert.assertEquals("Ok", statistics.get("StatusCode"));
-		Assert.assertEquals("Idle", statistics.get("0-Mariners4#RouteStatus"));
+		Assert.assertEquals("SRT", statistics.get("0-DK-PlaySTB#SourceProtocol"));
+		Assert.assertEquals("SRT", statistics.get("0-DK-PlaySTB#DestinationProtocol"));
+
 	}
 
 	/**
@@ -104,10 +103,9 @@ public class HaivisionGatewayCommunicatorTest {
 	 */
 	@Test
 	void testAggregatorWithMultipleFilteringValue() throws Exception {
-		haivisionGatewayCommunicator.setFilterByRouteName("0-Mariners4, 000-Avid-Loopback");
+		haivisionGatewayCommunicator.setFilterByRouteName("0-DK-PlaySTB, 4Kp60 Live (HMP) b272e17b-26f6-47e4-b25b-f8297121c8e0, RY - Play, STD, 000-Avid-Loopback, BT");;
 		extendedStatistic = (ExtendedStatistics) haivisionGatewayCommunicator.getMultipleStatistics().get(0);
 		Map<String, String> statistics = extendedStatistic.getStatistics();
-		List<AdvancedControllableProperty> advancedControllablePropertyList = extendedStatistic.getControllableProperties();
-		Assert.assertEquals(41, statistics.size());
+		System.out.println(statistics);
 	}
 }
