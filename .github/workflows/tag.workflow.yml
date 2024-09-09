@@ -65,11 +65,15 @@ jobs:
           sudo apt update
           sudo apt install gh -y
 
+      # Debug step to check the value of the tagname
+      - name: Debug tagname
+        run:
+          echo "Tagname is: ${{ needs.tag.outputs.tagname }}"
+
       - name: Create GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create "${{ needs.tag.outputs.tagname }}" \
           -t "${{ needs.tag.outputs.tagname }}" \
-          -n "Release notes for ${{
-            needs.tag.outputs.tagname }}"
+          -n "Release notes for ${{ needs.tag.outputs.tagname }}"
