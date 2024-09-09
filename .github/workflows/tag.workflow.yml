@@ -81,7 +81,7 @@ jobs:
 
       - name: Get .jar file path
         id: getfilename
-        run: echo "file=$(ls target/symphony-dal-infrastructure-gateway-haivision-srt-${{ needs.prep.outputs.ver }}.jar)" >> $GITHUB_OUTPUT
+        run: echo "file=$(ls target/symphony-dal-infrastructure-gateway-haivision-srt-${{ needs.prep.outputs.ver }}-${{ needs.prep.outputs.date }}-${{ needs.prep.outputs.rev }}.jar)" >> $GITHUB_OUTPUT
 
       - name: Install GitHub CLI
         run: |
