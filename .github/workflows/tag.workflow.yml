@@ -57,20 +57,25 @@ jobs:
 
   release:
     runs-on: ubuntu-latest
-    needs: tag
+    needs:
+      - prep
+      - tag
     steps:
       - uses: actions/checkout@v4
       - name: Install GitHub CLI
         run: |
           sudo apt update
           sudo apt install gh -y
-      - name: Fetch tags from remote
-        run: git fetch --tags
       # Debug step to check the value of the tagname
       - name: Debug tagname
         run: | 
-          echo "Tagname is: ${{ needs.tag.outputs.tagname }}"
+          echo "TagName is: ${{ needs.tag.outputs.tagname }}"
+          echo "Rev is: ${{ needs.prep.outputs.rev }}"
+          echo "Ver is: ${{ needs.prep.outputs.ver }}"
+          echo "Date is: ${{ needs.prep.outputs.date }}"
+
       - name: Create GitHub Release
+        if: ${{ needs.tag.outputs.tagname != '' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
