@@ -64,7 +64,8 @@ jobs:
         run: |
           sudo apt update
           sudo apt install gh -y
-
+      - name: Fetch tags from remote
+        run: git fetch --tags
       # Debug step to check the value of the tagname
       - name: Debug tagname
         run: | 
