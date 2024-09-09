@@ -81,7 +81,11 @@ jobs:
 
       - name: Get .jar file path
         id: getfilename
-        run: echo "file=$(ls target/symphony-dal-infrastructure-gateway-haivision-srt-${{ needs.prep.outputs.ver }}-${{ needs.prep.outputs.date }}-${{ needs.prep.outputs.rev }}.jar)" >> $GITHUB_OUTPUT
+        run: echo "file=$(ls target/symphony-dal-infrastructure-gateway-haivision-srt-${{ needs.prep.outputs.ver }}.jar)" >> $GITHUB_OUTPUT
+
+      - name: Rename .jar file
+        run: mv ${{ steps.getfilename.outputs.file }} target/symphony-dal-infrastructure-gateway-haivision-srt-${{ needs.prep.outputs.ver }}-${{ needs.prep.outputs.date }}-${{ needs.prep.outputs.rev }}.jar
+
 
       - name: Install GitHub CLI
         run: |
@@ -95,4 +99,4 @@ jobs:
           gh release create "v${{ needs.prep.outputs.ver }}.${{ needs.prep.outputs.date }}.${{ needs.prep.outputs.rev }}" \
           -t "Release ${{ needs.prep.outputs.ver }}.${{ needs.prep.outputs.date }}.${{ needs.prep.outputs.rev }}" \
           -n "Release ${{ needs.prep.outputs.ver }}" \
-          ${{ steps.getfilename.outputs.file }}
+          target/symphony-dal-infrastructure-gateway-haivision-srt-${{ needs.prep.outputs.ver }}-${{ needs.prep.outputs.date }}-${{ needs.prep.outputs.rev }}.jar
