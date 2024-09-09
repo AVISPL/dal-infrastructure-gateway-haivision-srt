@@ -67,7 +67,7 @@ jobs:
           sudo apt update
           sudo apt install gh -y
       # Debug step to check the value of the tagname
-      - name: Debug tagname
+      - name: Debug The Values
         run: | 
           echo "TagName is: ${{ needs.tag.outputs.tagname }}"
           echo "Rev is: ${{ needs.prep.outputs.rev }}"
@@ -75,10 +75,9 @@ jobs:
           echo "Date is: ${{ needs.prep.outputs.date }}"
 
       - name: Create GitHub Release
-        if: ${{ needs.tag.outputs.tagname != '' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "${{ needs.tag.outputs.tagname }}" \
-          -t "${{ needs.tag.outputs.tagname }}" \
-          -n "Release notes for ${{ needs.tag.outputs.tagname }}"
+          gh release create "Release ${{ needs.prep.outputs.ver }}.${{ needs.prep.outputs.date }}.${{ needs.prep.outputs.rev }}" \
+          -t "Release ${{ needs.prep.outputs.ver }}" \
+          -n "Release notes for adapter"
