@@ -69,7 +69,6 @@ jobs:
       - name: Debug tagname
         run:
           echo "Tagname is: ${{ needs.tag.outputs.tagname }}"
-
       - name: Create GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
