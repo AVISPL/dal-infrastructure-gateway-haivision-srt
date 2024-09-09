@@ -78,6 +78,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "Release ${{ needs.prep.outputs.ver }}.${{ needs.prep.outputs.date }}.${{ needs.prep.outputs.rev }}" \
+          gh release create "v${{ needs.prep.outputs.ver }}.${{ needs.prep.outputs.date }}.${{ needs.prep.outputs.rev }}" \
           -t "Release ${{ needs.prep.outputs.ver }}" \
-          -n "Release notes for adapter"
+          -n "Release ${{ needs.prep.outputs.ver }}.${{ needs.prep.outputs.date }}.${{ needs.prep.outputs.rev }}"
