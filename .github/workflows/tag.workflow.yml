@@ -29,7 +29,9 @@ jobs:
       - name: Get project version
         id: pversion
         run: echo "ver=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout| sed -e 's/-SNAPSHOT//g')" >> $GITHUB_OUTPUT
-
+      - name: Build .jar file
+        run: |
+          mvn clean install -DskipTests
   tag:
     runs-on: ubuntu-latest
     needs: prep
@@ -73,4 +75,5 @@ jobs:
         run: |
           gh release create "v${{ needs.prep.outputs.ver }}.${{ needs.prep.outputs.date }}.${{ needs.prep.outputs.rev }}" \
           -t "Release ${{ needs.prep.outputs.ver }}.${{ needs.prep.outputs.date }}.${{ needs.prep.outputs.rev }}" \
-          -n "Release ${{ needs.prep.outputs.ver }}"
+          -n "Release ${{ needs.prep.outputs.ver }}" \
+          ./target/*.jar
