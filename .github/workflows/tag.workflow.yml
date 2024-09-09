@@ -67,7 +67,7 @@ jobs:
 
       # Debug step to check the value of the tagname
       - name: Debug tagname
-        run:
+        run: | 
           echo "Tagname is: ${{ needs.tag.outputs.tagname }}"
       - name: Create GitHub Release
         env:
