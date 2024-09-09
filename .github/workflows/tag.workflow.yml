@@ -69,7 +69,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh auth login --with-token
           gh release create "${{ needs.tag.outputs.tagname }}" \
           -t "${{ needs.tag.outputs.tagname }}" \
           -n "Release notes for ${{
