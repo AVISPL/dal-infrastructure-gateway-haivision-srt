@@ -45,7 +45,7 @@ jobs:
       - name: Delete existing tags with same version
         run: |
           version="${{ needs.prep.outputs.ver }}"
-          for tag in $(git tag -l "${version}-*"); do
+          for tag in $(git tag -l "${version}.*"); do
             git tag -d "$tag"
             git push origin :refs/tags/$tag
           done
