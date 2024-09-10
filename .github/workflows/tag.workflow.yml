@@ -38,7 +38,6 @@ jobs:
       - name: Generate tag name
         id: tagname
         run: echo "tagname=v${{ needs.prep.outputs.ver }}.${{ needs.prep.outputs.date }}.${{ needs.prep.outputs.rev }}" >> $GITHUB_OUTPUT
-
       - name: Fetch tags from remote
         run: git fetch --tags
 
