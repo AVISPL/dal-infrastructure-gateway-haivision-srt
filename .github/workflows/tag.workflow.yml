@@ -3,7 +3,7 @@ name: Generate Tags for Adapters
 on:
   push:
     branches:
-      - 'release/**'
+      - 'feature/**'
 
 jobs:
   prep:
