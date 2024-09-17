@@ -546,13 +546,17 @@ public class HaivisionGatewayCommunicator extends RestCommunicator implements Mo
 						stats.put(name + HaivisionConstant.HASH + HaivisionConstant.SOURCE + item.getName(), value + HaivisionConstant.COLON + port);
 						break;
 					case PROTOCOL:
-						stats.put(name + HaivisionConstant.HASH + HaivisionConstant.SOURCE + item.getName(), value.toUpperCase());
+						value = value.equalsIgnoreCase("http") ? "HLS" : value.toUpperCase();
+						stats.put(name + HaivisionConstant.HASH + HaivisionConstant.SOURCE + item.getName(), value);
 						break;
 					case TYPE:
-                    case STATUS:
-                        stats.put(name + HaivisionConstant.HASH + HaivisionConstant.SOURCE + item.getName(), uppercaseFirstCharacter(value));
+						value = value.equalsIgnoreCase("hls") ? "Server" : uppercaseFirstCharacter(value);
+						stats.put(name + HaivisionConstant.HASH + HaivisionConstant.SOURCE + item.getName(), value);
 						break;
-                    default:
+					case STATUS:
+						stats.put(name + HaivisionConstant.HASH + HaivisionConstant.SOURCE + item.getName(), uppercaseFirstCharacter(value));
+						break;
+					default:
 						stats.put(name + HaivisionConstant.HASH + HaivisionConstant.SOURCE + item.getName(), value);
 						break;
 				}
@@ -592,9 +596,13 @@ public class HaivisionGatewayCommunicator extends RestCommunicator implements Mo
 							stats.put(name + HaivisionConstant.HASH + HaivisionConstant.DESTINATION + destinationIndex + item.getName(), value + HaivisionConstant.COLON + port);
 							break;
 						case PROTOCOL:
-							stats.put(name + HaivisionConstant.HASH + HaivisionConstant.DESTINATION + destinationIndex + item.getName(), value.toUpperCase());
+							value = value.equalsIgnoreCase("http") ? "HLS" : value.toUpperCase();
+							stats.put(name + HaivisionConstant.HASH + HaivisionConstant.DESTINATION + destinationIndex + item.getName(), value);
 							break;
 						case TYPE:
+							value = value.equalsIgnoreCase("hls") ? "Server" : uppercaseFirstCharacter(value);
+							stats.put(name + HaivisionConstant.HASH + HaivisionConstant.DESTINATION + destinationIndex + item.getName(), value);
+							break;
 						case STATUS:
 							stats.put(name + HaivisionConstant.HASH + HaivisionConstant.DESTINATION + destinationIndex + item.getName(), uppercaseFirstCharacter(value));
 							break;
